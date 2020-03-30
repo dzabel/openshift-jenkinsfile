@@ -1,0 +1,58 @@
+apiVersion: build.openshift.io/v1
+kind: "BuildConfig"
+metadata:
+  labels:
+    name: "survival"
+    application: "survival"
+  name: "survival"
+spec:
+  failedBuildsHistoryLimit: 5
+  successfulBuildsHistoryLimit: 5
+  output: {}
+  postCommit: {}
+  resources: {}
+  runPolicy: Serial
+  strategy:
+    jenkinsPipelineStrategy:
+      jenkinsfile: |-
+        pipeline {
+          agent none
+          options{
+              buildDiscarder(logRotator(daysToKeepStr: '30', numToKeepStr: '30'))
+          }
+          stages {
+             stage('init') {
+                  steps {
+                      script {
+                          echo 'init'
+                      }
+                  }
+              }
+              stage('prepare deployment') {
+
+                  options {
+                      timeout(time:7, unit:'DAYS')
+                  }
+                  steps {
+                      script{
+                            input (id: 'update_prod', message: "Update Prod?")
+                      }
+                  }
+              }
+
+            stage('do deployment') {
+                when {
+                    expression {
+                        currentBuild.result == null || currentBuild.result == 'SUCCESS'
+                    }
+                }
+                steps {
+                    script {
+                        echo 'doDeployment'
+                    }
+                }
+
+            }
+          }
+        }
+    type: JenkinsPipeline
